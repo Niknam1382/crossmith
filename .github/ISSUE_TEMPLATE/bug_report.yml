@@ -1,0 +1,73 @@
+name: 🐛 Bug report
+description: Something in Crossmith didn't work the way it should.
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. A minimal reproduction
+        (a small sample project, or the one that failed) is the single most
+        useful thing you can attach.
+
+  - type: input
+    id: version
+    attributes:
+      label: Crossmith version
+      placeholder: "0.1.0 (Help → About, or `crossmith --version`)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - Windows
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Linux
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what actually happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Drag in project '...'
+        2. Click '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Copy from the build log panel, or attach the log file. This is auto-formatted, no need for code fences.
+      render: shell
+
+  - type: textarea
+    id: project
+    attributes:
+      label: Sample project (if possible)
+      description: A link to, or a zip of, the smallest project that reproduces this. This dramatically speeds up a fix.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and didn't find a duplicate
+          required: true
+        - label: I'm using the latest release
+          required: false

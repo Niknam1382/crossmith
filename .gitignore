@@ -1,0 +1,51 @@
+# --- Python (engine/) ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# --- Node / frontend (desktop/) ---
+node_modules/
+desktop/dist/
+.vite/
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# --- Rust / Tauri (desktop/src-tauri/) ---
+desktop/src-tauri/target/
+desktop/src-tauri/binaries/*
+!desktop/src-tauri/binaries/.gitkeep
+Cargo.lock
+
+# --- Crossmith runtime artifacts ---
+.crossmith/
+*.crossmith-cache/
+crossmith-builds/
+*.db
+*.sqlite3
+
+# --- OS / editor cruft ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+!.vscode/extensions.json
+*.swp
+
+# --- Secrets — never commit these ---
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.keystore

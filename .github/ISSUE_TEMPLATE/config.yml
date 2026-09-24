@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Ask a question
+    url: https://github.com/niknam1382/crossmith/discussions
+    about: Usage questions and general discussion — searchable, and helps the next person too.
+  - name: 🔒 Report a security vulnerability
+    url: https://github.com/niknam1382/crossmith/security/advisories/new
+    about: Please do not file security issues as public bugs — see SECURITY.md.
