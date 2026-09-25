@@ -159,7 +159,7 @@ Full write-up: [`docs/DECISIONS.md`](docs/DECISIONS.md) ·
 
 - [x] Phase 0 — Strategy & decisions
 - [ ] Phase 1 — Repository scaffold *(this PR)*
-- [ ] Phase 2 — Core app shell + detection engine
+- [x] Phase 2 — Core app shell + detection engine
 - [ ] Phase 3 — Python adapter MVP (Windows/Linux/macOS local builds)
 - [ ] Phase 4 — Optional local AI assist (Needle)
 - [ ] Phase 5 — Build engine hardening (sandboxing, caching, retries)

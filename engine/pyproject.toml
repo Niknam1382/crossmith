@@ -1,0 +1,42 @@
+[project]
+name = "crossmith-engine"
+version = "0.1.0"
+description = "Crossmith core engine: project detection, build orchestration, and packaging."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "tomli-w>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "httpx>=0.27",
+    "ruff>=0.7",
+    "mypy>=1.13",
+]
+
+[project.scripts]
+crossmith-engine = "crossmith.api.main:run"
+
+[project.entry-points."crossmith.adapters"]
+# First- and third-party adapters register here once they exist, e.g.:
+# python = "crossmith.adapters.python_adapter:PythonAdapter"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/crossmith"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

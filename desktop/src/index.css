@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+/* Crossmith palette: neutral slate surfaces + a forge-amber accent.
+   Tokens are CSS variables so both Tailwind utilities (via @theme) and
+   plain CSS can use them, and so dark mode is a value swap, not a
+   duplicate set of classes. */
+@theme {
+  --color-surface: #ffffff;
+  --color-surface-raised: #f8fafc;
+  --color-border: #e2e8f0;
+  --color-ink: #0f172a;
+  --color-ink-muted: #64748b;
+  --color-accent: #d97706;
+  --color-accent-ink: #ffffff;
+  --color-success: #16a34a;
+  --color-danger: #dc2626;
+
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono:
+    "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+:root[data-theme="dark"] {
+  --color-surface: #0b1220;
+  --color-surface-raised: #131c2e;
+  --color-border: #253044;
+  --color-ink: #e2e8f0;
+  --color-ink-muted: #94a3b8;
+  --color-accent: #f59e0b;
+  --color-accent-ink: #0b1220;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-surface: #0b1220;
+    --color-surface-raised: #131c2e;
+    --color-border: #253044;
+    --color-ink: #e2e8f0;
+    --color-ink-muted: #94a3b8;
+    --color-accent: #f59e0b;
+    --color-accent-ink: #0b1220;
+  }
+}
+
+body {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  overscroll-behavior: none;
+}
+
+/* Native window has no OS titlebar chrome (see tauri.conf.json) — this
+   region is what makes the top of the window draggable. */
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+.titlebar-drag button,
+.titlebar-drag a {
+  -webkit-app-region: no-drag;
+}

@@ -12,6 +12,9 @@ venv/
 htmlcov/
 dist/
 build/
+engine/dist-sidecar/
+engine/build-sidecar/
+engine/*.spec
 
 # --- Node / frontend (desktop/) ---
 node_modules/
@@ -20,6 +23,9 @@ desktop/dist/
 npm-debug.log*
 pnpm-debug.log*
 yarn-error.log*
+*.tsbuildinfo
+desktop/vite.config.js
+desktop/vite.config.d.ts
 
 # --- Rust / Tauri (desktop/src-tauri/) ---
 desktop/src-tauri/target/
