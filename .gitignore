@@ -11,7 +11,7 @@ venv/
 .coverage
 htmlcov/
 dist/
-build/
+engine/build/
 engine/dist-sidecar/
 engine/build-sidecar/
 engine/*.spec

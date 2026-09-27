@@ -164,3 +164,71 @@ up front:
 *Next: either Phase 5 (build engine hardening) or watching the first real
 release-tag push actually run on Windows/macOS CI and fixing whatever it
 finds — whichever the user prioritizes.*
+
+## Addendum — Phase 5b, cont'd: first real CI run found two real bugs
+
+`v1.0.0-rc1` was pushed as the first real end-to-end test (exactly the
+plan above). Both `ci.yml` and `release.yml` failed. Root-caused by
+actually reproducing each failure — pulling the exact commit CI built
+(`codeload.github.com/.../tar.gz/<sha>`, not the working tree) into a
+clean venv and rerunning `ruff`/`mypy`/`pytest`/`PyInstaller` against
+it — rather than guessing from the CI log summary:
+
+- **`engine/src/crossmith/build/` (the Build Engine —
+  `orchestrator.py`, `venv_manager.py`) was never actually committed.**
+  `.gitignore` had a bare `build/` line meant for Python's top-level
+  packaging-artifact directory; with no leading slash, gitignore matches
+  that name at *any* depth, so it silently also matched this real
+  source package every time it was `git add`-ed. Every local run
+  (including the Phase 5b sidecar test above) used the working tree,
+  where the files exist on disk regardless of git — so this was
+  invisible until CI did a real `git checkout`. Impact was worse than
+  the CI failure alone suggested: `crossmith.api.main` and
+  `crossmith.adapters.python_adapter` both import from it unconditionally,
+  so the engine can't even be imported in a fresh clone. The Linux/macOS
+  `release.yml` jobs still showed green and uploaded artifacts, because
+  PyInstaller treats an unresolvable first-party import as a build-time
+  *warning*, not an error — confirmed by actually running the frozen
+  binary from that exact commit: it builds, then crashes on launch with
+  `ModuleNotFoundError: No module named 'crossmith.build'` before the
+  server ever binds, so `/health` never answers. The `ruff` failure
+  (`I001`, reported as "import block un-sorted") was a symptom of the
+  same bug, not a separate one — ruff's import classifier couldn't
+  place a `crossmith.build` submodule it couldn't find on disk, and
+  restoring the package resolved it with no code changes. Fix: added
+  the missing package to git and re-scoped the ignore rule to
+  `engine/build/`, matching only the actual packaging-artifact path.
+- **WiX (the `.msi` target) rejects a non-numeric pre-release version.**
+  `v1.0.0-rc1` is valid semver, and Cargo/npm/PyPI/NSIS all accept it,
+  but confirmed against tauri-bundler's own version-validation code:
+  WiX's `ProductVersion` must be `major.minor.patch[.build]`, all
+  numeric, so `-rc1` fails with "app version cannot have build metadata
+  or pre-release identifier." Only Windows builds both an NSIS `.exe`
+  *and* a WiX `.msi` from the same `targets: "all"`, which is why only
+  that platform failed. Fix: `sync_version.py` now also derives a
+  numeric-only `major.minor.patch` and writes it to the documented
+  `bundle.windows.wix.version` override, so WiX gets a version it
+  accepts while every other artifact keeps reporting the real,
+  full version (see `docs/guides/release-process.md`).
+
+Both fixes were verified directly against the actual failing commit
+(not just the corrected tree): `ruff`/`mypy`/`pytest` — including the
+2 `slow` real-Nuitka/PyInstaller tests — all pass clean after restoring
+`build/`, and the `ModuleNotFoundError` crash was reproduced and then
+confirmed gone. The WiX fix could not be compiled end-to-end in this
+environment (no Windows/WiX toolchain available); it's a direct
+application of tauri-bundler's own documented `wix.version` escape
+hatch, but the next tag push is still the first real confirmation of
+it — see the "one gap" note this addendum doesn't close, below.
+
+**One gap this doesn't close:** a separate, upstream Tauri bug
+(tauri-apps/tauri#14681 — MSI bundling can fail when `externalBin` is
+set, independent of version) was open against tauri-bundler and closed
+via a fix (#15651) during 2026. This project's locked `@tauri-apps/cli`
+(2.11.5) is recent enough it most likely postdates that fix, but that
+couldn't be confirmed precisely from here — worth keeping in mind if
+the Windows job fails *again* after this fix, with a different error.
+
+*Next: push a new tag (`v1.0.0-rc2`) to confirm both fixes for real on
+CI's Windows/macOS/Linux runners, then Phase 5 (build engine hardening)
+or more language adapters — whichever the user prioritizes.*

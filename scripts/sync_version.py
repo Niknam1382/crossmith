@@ -26,9 +26,29 @@ def sync_package_json(path: Path, version: str) -> None:
     path.write_text(json.dumps(data, indent=2) + "\n")
 
 
+def wix_safe_version(version: str) -> str:
+    """Reduce a semver string to the numeric-only major.minor.patch WiX's
+    MSI ProductVersion accepts.
+
+    WiX (the Windows .msi target) rejects any pre-release identifier or
+    build-metadata suffix -- e.g. "1.0.0-rc1" fails with "app version
+    cannot have build metadata or pre-release identifier" (confirmed
+    against tauri-bundler's own version-validation logic). NSIS, Cargo,
+    npm, and PyPI all accept the full semver string fine; only WiX needs
+    this reduced form, via the separate `bundle.windows.wix.version`
+    override -- so the "real" version (rc suffix included) still shows up
+    everywhere else, and the tag itself is untouched.
+    """
+    return version.split("+", 1)[0].split("-", 1)[0]
+
+
 def sync_tauri_conf(path: Path, version: str) -> None:
     data = json.loads(path.read_text())
     data["version"] = version
+    bundle = data.setdefault("bundle", {})
+    windows = bundle.setdefault("windows", {})
+    wix = windows.setdefault("wix", {})
+    wix["version"] = wix_safe_version(version)
     path.write_text(json.dumps(data, indent=2) + "\n")
 
 
