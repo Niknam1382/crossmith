@@ -34,6 +34,8 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": ["binaries/crossmith-engine"]
+    "externalBin": [
+      "binaries/crossmith-engine"
+    ]
   }
 }

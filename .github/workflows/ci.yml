@@ -1,0 +1,54 @@
+name: CI
+
+# Fast checks on every push/PR -- deliberately does NOT compile the
+# Rust/Tauri shell (that's release.yml's job, only on a version tag,
+# because it's slow and needs the full OS-matrix). This catches the vast
+# majority of regressions in well under a minute.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install engine (dev extra)
+        working-directory: engine
+        run: pip install -e ".[dev]"
+      - name: ruff
+        working-directory: engine
+        run: ruff check .
+      - name: mypy
+        working-directory: engine
+        run: mypy src
+      - name: pytest (fast tests -- real Nuitka/PyInstaller builds are excluded here, see pyproject.toml's "slow" marker)
+        working-directory: engine
+        run: pytest -q
+
+  desktop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - name: Install dependencies
+        working-directory: desktop
+        run: npm ci
+      - name: Typecheck
+        working-directory: desktop
+        run: npx tsc --noEmit
+      - name: Lint
+        working-directory: desktop
+        run: npx eslint .
+      - name: Build
+        working-directory: desktop
+        run: npm run build

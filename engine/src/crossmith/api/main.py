@@ -13,6 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from crossmith import __version__
+from crossmith.ai import get_ai_engine
+from crossmith.build.orchestrator import run_build
 from crossmith.detection.engine import needs_manual_review, scan_project
 from crossmith.logging_config import configure_logging
 from crossmith.settings import Settings
@@ -45,6 +47,24 @@ class ScanResponse(BaseModel):
     needs_manual_review: bool
 
 
+class BuildRequest(BaseModel):
+    project_path: str
+    adapter_name: str | None = None
+    run_tests: bool = True
+
+
+class BuildResponse(BaseModel):
+    build_id: str
+    adapter_name: str
+    tests_ok: bool
+    test_logs: str
+    success: bool
+    artifact_paths: list[str]
+    logs: str
+    error: str | None
+    error_explanation: str | None
+
+
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     return HealthResponse(status="ok", version=__version__)
@@ -67,11 +87,49 @@ def scan(request: ScanRequest) -> ScanResponse:
     if not path.exists():
         raise HTTPException(status_code=404, detail=f"No such path: {path}")
 
-    results = scan_project(path)
+    settings = Settings.load()
+    results = scan_project(path, ai_engine=get_ai_engine(settings))
     logger.info("Scanned %s -> %d match(es)", path, len(results))
     return ScanResponse(
         matches=[r.__dict__ for r in results],
         needs_manual_review=needs_manual_review(results),
+    )
+
+
+@app.post("/projects/build", response_model=BuildResponse)
+def build(request: BuildRequest) -> BuildResponse:
+    path = Path(request.project_path).expanduser().resolve()
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=f"No such path: {path}")
+
+    settings = Settings.load()
+    try:
+        result = run_build(
+            path,
+            adapter_name=request.adapter_name,
+            run_tests=request.run_tests,
+            ai_engine=get_ai_engine(settings),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    logger.info(
+        "Build %s (%s) for %s -> success=%s",
+        result.build_id,
+        result.adapter_name,
+        path,
+        result.build_result.success,
+    )
+    return BuildResponse(
+        build_id=result.build_id,
+        adapter_name=result.adapter_name,
+        tests_ok=result.test_result.success,
+        test_logs=result.test_result.logs,
+        success=result.build_result.success,
+        artifact_paths=[str(p) for p in result.build_result.artifact_paths],
+        logs=result.build_result.logs,
+        error=result.build_result.error,
+        error_explanation=result.build_result.error_explanation,
     )
 
 

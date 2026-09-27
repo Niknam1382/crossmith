@@ -83,3 +83,84 @@ Crossmith releases itself with the same mechanism it recommends to users: GitHub
 
 ---
 *Next: Phase 1 — full repository scaffold (tree, README, LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, issue/PR templates).*
+
+## Addendum — Phase 4: Needle wired in
+
+The §4 table above called this "post-MVP," confirmed real but noted the
+model repo was "weeks old" at Phase 0. By Phase 4 it had shipped a major
+version: **Needle 2**, 45M params (not 26M), 14MB, via `pip install
+cactus-needle`. The package's actual, installed API (`cactus-needle`
+3.0.5, verified by hand — `needle.Needle(tools=...)`, `.complete()`
+returning a `confidence`-scored call, `needle.extract()`) matches what
+was speculatively planned closely enough that no architecture decision
+here needed to change, but two things are worth recording that weren't
+knowable at Phase 0:
+
+- **"Fully offline" needed a precise correction, not a retraction.** The
+  *package* fetches its own weights (~14MB) from Hugging Face once, on
+  first use, and caches them. That is a real network call — just never
+  one that carries any project data; inference itself is 100% local. The
+  README's AI & privacy section and `docs/guides/ai-assist.md` now say
+  this precisely instead of the flatter "fully local, nothing sent
+  anywhere," which was true of the code but imprecise about the model
+  fetch.
+- **"Automatic fallback if it's absent, low-confidence, or errors" is now
+  a tested guarantee, not just a design intent** — including the specific
+  failure mode of no internet access to Hugging Face
+  (`huggingface_hub.errors.LocalEntryNotFoundError`, confirmed to fail
+  fast rather than hang) and of the `cactus-needle` package not being
+  installed at all (confirmed: full test suite passes identically with
+  and without it installed). See `docs/guides/ai-assist.md` for what was
+  and wasn't possible to verify in a sandboxed environment without
+  Hugging Face access.
+
+Implementation: `engine/src/crossmith/ai/` (`base.py`'s `AIEngine`
+interface, `needle_engine.py`'s `NeedleEngine`), wired into
+`detection/engine.py` (`scan_project`'s optional `ai_engine` param) and
+`build/orchestrator.py` (`run_build`'s error-explanation fallback), both
+behind `Settings.ai_assist_enabled` (already existed from Phase 2/3 — the
+setting and its desktop UI toggle were built ahead of the engine wiring
+they were waiting on).
+
+*Next: Phase 5 — build engine hardening (sandboxing, caching, retries).*
+
+## Addendum — Phase 5b: self-release CI (pulled forward)
+
+Local testing of the Tauri/Rust shell on Windows turned out to be
+impractical for the user to do quickly. Rather than block further
+progress on that, we pulled the self-release CI idea forward from
+Phase 7 ("GitHub release excellence") to right now: a pushed version tag
+(`.github/workflows/release.yml`) builds real installers on
+windows-latest/macos-latest/ubuntu-22.04 GitHub-hosted runners and
+attaches them to a draft Release. See `docs/guides/release-process.md`
+for the full walkthrough.
+
+This reframes what "testing this on Windows" even means: instead of one
+person's one machine, it's GitHub's own Windows/macOS runners, on every
+release, for free. It does not remove the value of a human trying the
+resulting installer once before publishing — see that guide's closing
+note — but it does mean nobody needs a working local Rust/Tauri
+toolchain just to find out whether the build itself succeeds.
+
+Two real gaps this surfaced and fixed along the way, not designed for
+up front:
+
+- **The bundle icons didn't exist.** `tauri.conf.json`'s `bundle.icon`
+  list pointed at five files that were only ever a placeholder note in
+  `icons/README.md`. `tauri build` — which CI now actually runs — would
+  have failed immediately on every platform. Fixed by generating a
+  simple, functional `docs/assets/logo.png` (a geometric mark in the
+  UI's existing forge-amber accent color, not commissioned design work)
+  and running `npx tauri icon` on it to produce the real set. This is a
+  placeholder in the sense that it's not final branding, but it is a
+  real, checked-in file the build now actually uses — no longer a TODO.
+- **The sidecar-freezing step (`scripts/build_sidecar.py`) had never
+  actually been run.** It was written in an earlier phase but not
+  exercised. Running it for real: it worked on the first try, and the
+  resulting frozen binary was started and answered `GET /health`
+  correctly — the first real evidence the "ship the Python engine as a
+  PyInstaller sidecar" plan from §8 actually works, not just compiles.
+
+*Next: either Phase 5 (build engine hardening) or watching the first real
+release-tag push actually run on Windows/macOS CI and fixing whatever it
+finds — whichever the user prioritizes.*

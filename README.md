@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.png" width="120" alt="Crossmith logo (placeholder — add docs/assets/logo.png)" />
+  <img src="docs/assets/logo.png" width="120" alt="Crossmith logo" />
 </p>
 
 <h1 align="center">Crossmith</h1>
@@ -62,15 +62,16 @@ exists so none of that is your problem anymore.
 
 ## Quick start
 
-```bash
-# Coming soon — Crossmith is pre-release. Star/watch the repo to get notified.
-# Planned installation, once released:
-curl -fsSL https://crossmith.dev/install.sh | sh        # macOS / Linux
-winget install Crossmith.Crossmith                        # Windows (planned)
-```
+Pre-release — there's no `v1.0.0` yet. Once the first version tag is
+pushed, [`.github/workflows/release.yml`](.github/workflows/release.yml)
+builds and attaches native installers for Windows/macOS/Linux to
+[the Releases page](https://github.com/niknam1382/crossmith/releases)
+automatically — see [`docs/guides/release-process.md`](docs/guides/release-process.md)
+for exactly how that works and how to cut one. Until then, run from
+source: [`docs/guides/getting-started.md`](docs/guides/getting-started.md).
 
-Until then, run it from source — see [Development setup](CONTRIBUTING.md#development-setup)
-in `CONTRIBUTING.md`.
+Until then, run it from source — see
+[`docs/guides/getting-started.md`](docs/guides/getting-started.md).
 
 ## Usage
 
@@ -122,11 +123,17 @@ file/AST scanning, no model required. An optional local AI assist (built on
 [cactus-compute/needle](https://github.com/cactus-compute/needle), a small
 on-device model) can help with messy or ambiguous projects. It is:
 
-- **Off by default**, opt-in per project
-- **Fully local** — nothing about your code is sent anywhere
-- **Never load-bearing** — if it's unavailable, low-confidence, or errors,
-  Crossmith falls back to the deterministic engine and asks you instead of
-  guessing
+- **Off by default**, opt-in per project (`ai_assist_enabled` in settings)
+- **Fully local at inference time** — nothing about your code is sent
+  anywhere; the only network call anywhere in this feature is a one-time,
+  ~14MB fetch of the model itself from Hugging Face the first time it's
+  used, cached locally after that. On a machine with no internet access
+  at all, that fetch just fails fast and AI assist behaves exactly like
+  it's disabled — it never blocks a scan or build
+- **Never load-bearing** — if it's not installed (it's an optional extra,
+  `pip install crossmith-engine[ai]`), unavailable, low-confidence, or
+  errors, Crossmith falls back to the deterministic engine and asks you
+  instead of guessing
 
 ## How Crossmith compares
 
@@ -158,13 +165,22 @@ Full write-up: [`docs/DECISIONS.md`](docs/DECISIONS.md) ·
 ## Roadmap
 
 - [x] Phase 0 — Strategy & decisions
-- [ ] Phase 1 — Repository scaffold *(this PR)*
+- [x] Phase 1 — Repository scaffold
 - [x] Phase 2 — Core app shell + detection engine
-- [ ] Phase 3 — Python adapter MVP (Windows/Linux/macOS local builds)
-- [ ] Phase 4 — Optional local AI assist (Needle)
+- [x] Phase 3 — Python adapter MVP (Windows/Linux/macOS local builds)
+- [x] Phase 4 — Optional local AI assist (Needle) — see
+      [`docs/guides/ai-assist.md`](docs/guides/ai-assist.md). The desktop
+      settings toggle for this already existed from Phase 2; Phase 4 wired
+      up the engine side it was waiting on
 - [ ] Phase 5 — Build engine hardening (sandboxing, caching, retries)
+- [x] Phase 5b — Self-release CI (pulled forward from Phase 7): tag `vX.Y.Z`
+      → GitHub Actions cross-builds real installers on
+      windows-latest/macos-latest/ubuntu-22.04 and attaches them as a draft
+      release. See [`docs/guides/release-process.md`](docs/guides/release-process.md).
+      Only Rust/Tauri compiling successfully on real Windows/macOS runners
+      is still unconfirmed — see that guide's honesty note
 - [ ] Phase 6 — More languages, Android
-- [ ] Phase 7 — GitHub release excellence, docs site, launch
+- [ ] Phase 7 — Docs site, launch (release automation itself moved up to 5b)
 
 Details: [`docs/DECISIONS.md` §6](docs/DECISIONS.md#6-mvp-scope).
 

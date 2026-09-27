@@ -1,0 +1,149 @@
+name: Release
+
+# Crossmith builds itself the same way it's meant to build other people's
+# projects: push a version tag, and this workflow cross-builds native
+# installers on real Windows/macOS/Linux runners and attaches them to a
+# GitHub Release. See docs/DECISIONS.md's "Crossmith releases itself"
+# note and docs/guides/release-process.md for the full walkthrough
+# (including why this exists: compiling the Tauri/Rust shell has not been
+# possible to verify on a local Windows machine, so CI's real OS runners
+# are the actual first end-to-end test of it, on every platform, and the
+# release mechanism *is* the dogfooding).
+#
+# Trigger:
+#   git tag v1.0.0 && git push origin v1.0.0
+# or run manually from the Actions tab (workflow_dispatch) for a test
+# build that doesn't publish a release.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Attach build artifacts to a GitHub Release"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+env:
+  # actions/checkout gives a detached HEAD on a tag push; github.ref_name
+  # is the tag itself (e.g. "v1.0.0") in both trigger cases.
+  RELEASE_VERSION: ${{ github.ref_name }}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux
+          - os: windows-latest
+            platform: windows
+          - os: macos-latest
+            platform: macos
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Confirmed working set on Ubuntu 24.04; ubuntu-22.04 (this
+      # runner's actual image) needs the same packages -- see
+      # docs/guides/troubleshooting.md's Linux build-dependency section
+      # for how this list was arrived at.
+      - name: Install Linux system dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libssl-dev libsoup-3.0-dev \
+            libayatana-appindicator3-dev librsvg2-dev libxdo-dev \
+            build-essential curl wget file pkg-config
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      # Deliberately NOT actions-rs/toolchain (unmaintained) and
+      # deliberately not the OS package manager's rustc -- see
+      # docs/guides/troubleshooting.md's "feature edition2024 is
+      # required" entry for exactly why an old distro-provided Rust
+      # breaks this build.
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            desktop/src-tauri/target
+          key: ${{ matrix.os }}-cargo-${{ hashFiles('desktop/src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ matrix.os }}-cargo-
+
+      - name: Sync version from tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: python scripts/sync_version.py "${{ env.RELEASE_VERSION }}"
+
+      - name: Freeze the Python engine into a sidecar binary
+        shell: bash
+        run: |
+          python -m venv .venv-release
+          VENV_PY=.venv-release/bin/python
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            VENV_PY=.venv-release/Scripts/python.exe
+          fi
+          "$VENV_PY" -m pip install --upgrade pip
+          "$VENV_PY" -m pip install -e "./engine[release]"
+          "$VENV_PY" scripts/build_sidecar.py
+
+      - name: Install frontend dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Build the Tauri app
+        working-directory: desktop
+        run: npm run tauri build
+
+      # Every platform's bundler writes somewhere different under
+      # target/release/bundle/ -- msi+nsis on Windows, dmg on macOS,
+      # deb+appimage+rpm on Linux. Glob broadly and let the upload step
+      # skip whatever a given OS didn't produce.
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: crossmith-${{ matrix.platform }}
+          path: |
+            desktop/src-tauri/target/release/bundle/**/*.msi
+            desktop/src-tauri/target/release/bundle/**/*.exe
+            desktop/src-tauri/target/release/bundle/**/*.dmg
+            desktop/src-tauri/target/release/bundle/**/*.AppImage
+            desktop/src-tauri/target/release/bundle/**/*.deb
+            desktop/src-tauri/target/release/bundle/**/*.rpm
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Attach installers to the GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: |
+            desktop/src-tauri/target/release/bundle/**/*.msi
+            desktop/src-tauri/target/release/bundle/**/*.exe
+            desktop/src-tauri/target/release/bundle/**/*.dmg
+            desktop/src-tauri/target/release/bundle/**/*.AppImage
+            desktop/src-tauri/target/release/bundle/**/*.deb
+            desktop/src-tauri/target/release/bundle/**/*.rpm
+          fail_on_unmatched_files: false

@@ -31,7 +31,12 @@ desktop/vite.config.d.ts
 desktop/src-tauri/target/
 desktop/src-tauri/binaries/*
 !desktop/src-tauri/binaries/.gitkeep
-Cargo.lock
+# NOTE: Cargo.lock is intentionally NOT ignored. This is a binary
+# application (the Tauri shell), not a library, so the lockfile is
+# committed for reproducible builds across contributors/CI — ignoring it
+# was a bug: it meant every fresh clone re-resolved to the newest crates,
+# which is exactly what breaks the build on an older (e.g. apt-provided)
+# Rust toolchain that doesn't support the "edition2024" Cargo feature.
 
 # --- Crossmith runtime artifacts ---
 .crossmith/

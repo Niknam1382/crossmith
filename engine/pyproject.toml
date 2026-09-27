@@ -19,13 +19,26 @@ dev = [
     "ruff>=0.7",
     "mypy>=1.13",
 ]
+# Local AI assist (Phase 4 -- see crossmith.ai). Optional: everything in
+# crossmith.ai degrades to a no-op when this isn't installed. Pinned only
+# to a floor -- this project moves fast and we track it deliberately
+# loosely; confirmed working against 3.0.5 as of this writing.
+ai = [
+    "cactus-needle>=3.0",
+]
+# Only for scripts/build_sidecar.py, run in CI (see .github/workflows/release.yml)
+# to freeze the engine into a standalone binary for the Tauri bundle -- not
+# needed for local dev, and separate from the per-project isolated build
+# venvs the Nuitka/PyInstaller *backends* (packaging/) create at request time.
+release = [
+    "pyinstaller>=6.11",
+]
 
 [project.scripts]
 crossmith-engine = "crossmith.api.main:run"
 
 [project.entry-points."crossmith.adapters"]
-# First- and third-party adapters register here once they exist, e.g.:
-# python = "crossmith.adapters.python_adapter:PythonAdapter"
+python = "crossmith.adapters.python_adapter:PythonAdapter"
 
 [build-system]
 requires = ["hatchling"]
@@ -38,5 +51,15 @@ packages = ["src/crossmith"]
 line-length = 100
 target-version = "py311"
 
+[[tool.mypy.overrides]]
+# cactus-needle (the `ai` extra, see crossmith.ai) ships no type stubs /
+# py.typed marker as of 3.0.5. Only this one module touches it.
+module = "needle"
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "slow: real builds via Nuitka/PyInstaller (30-60s+ each). Excluded by default — run with `pytest -m slow`.",
+]
+addopts = "-m 'not slow'"

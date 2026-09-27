@@ -28,6 +28,18 @@ export interface ScanResponse {
   needs_manual_review: boolean;
 }
 
+export interface BuildResponse {
+  build_id: string;
+  adapter_name: string;
+  tests_ok: boolean;
+  test_logs: string;
+  success: boolean;
+  artifact_paths: string[];
+  logs: string;
+  error: string | null;
+  error_explanation: string | null;
+}
+
 export interface EngineSettings {
   theme: "light" | "dark" | "system";
   language: "en" | "fa";
@@ -74,6 +86,12 @@ export const engine = {
 
   scanProject: (projectPath: string) =>
     request<ScanResponse>("/projects/scan", {
+      method: "POST",
+      body: JSON.stringify({ project_path: projectPath }),
+    }),
+
+  buildProject: (projectPath: string) =>
+    request<BuildResponse>("/projects/build", {
       method: "POST",
       body: JSON.stringify({ project_path: projectPath }),
     }),
